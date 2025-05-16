@@ -15,6 +15,7 @@ import javafx.scene.layout.Pane;
 import javafx.scene.shape.Polygon;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,12 +27,24 @@ public class Main extends Application {
     private final Map<Entity, Polygon> polygons = new ConcurrentHashMap<>();
     private final Pane gameWindow = new Pane();
 
+    private Iterable<IGamePluginService> gamePluginServices;
+    private Iterable<IEntityProcessingService> entityProcessingServices;
+    private Iterable<IPostEntityProcessingService> postEntityProcessingServices;
+
     public static void main(String[] args) {
         launch(Main.class);
     }
 
     @Override
     public void start(Stage window) throws Exception {
+        // Initialize Spring application context
+        AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(SpringConfig.class);
+
+        // Retrieve beans from SpringConfig
+        gamePluginServices = context.getBean("gamePluginServices", Iterable.class);
+        entityProcessingServices = context.getBean("entityProcessingServices", Iterable.class);
+        postEntityProcessingServices = context.getBean("postEntityProcessingServices", Iterable.class);
+
         Text text = new Text(10, 20, "Destroyed asteroids: 0");
         gameWindow.setPrefSize(gameData.getDisplayWidth(), gameData.getDisplayHeight());
         gameWindow.getChildren().add(text);
@@ -66,8 +79,8 @@ public class Main extends Application {
             }
         });
 
-        // Lookup all Game Plugins using ServiceLoaderHelper
-        for (IGamePluginService iGamePlugin : ServiceLoaderHelper.loadGamePluginServices()) {
+        // Use Spring beans instead of ServiceLoaderHelper
+        for (IGamePluginService iGamePlugin : gamePluginServices) {
             iGamePlugin.start(gameData, world);
         }
         for (Entity entity : world.getEntities()) {
@@ -93,10 +106,10 @@ public class Main extends Application {
     }
 
     private void update() {
-        for (IEntityProcessingService entityProcessorService : ServiceLoaderHelper.loadEntityProcessingServices()) {
+        for (IEntityProcessingService entityProcessorService : entityProcessingServices) {
             entityProcessorService.process(gameData, world);
         }
-        for (IPostEntityProcessingService postEntityProcessorService : ServiceLoaderHelper.loadPostEntityProcessingServices()) {
+        for (IPostEntityProcessingService postEntityProcessorService : postEntityProcessingServices) {
             postEntityProcessorService.process(gameData, world);
         }
     }
