@@ -1,5 +1,6 @@
 package dk.sdu.mmmi.cbse.asteroid;
 
+import dk.sdu.mmmi.cbse.common.asteroids.Asteroid;
 import dk.sdu.mmmi.cbse.common.asteroids.IAsteroidSplitter;
 import dk.sdu.mmmi.cbse.common.data.Entity;
 import dk.sdu.mmmi.cbse.common.data.World;
@@ -8,32 +9,27 @@ import dk.sdu.mmmi.cbse.common.data.World;
 public class AsteroidSplitterImpl implements IAsteroidSplitter {
 
     @Override
-    public void createSplitAsteroid(Entity e, World world) {
-        // Check if the asteroid is large enough to split
-        if (e.getRadius() <= 5) {
-            return; // Do not split if the asteroid is too small
-        }
+    public void createAsteroids(Entity original, World world) {
 
-        // Create two smaller asteroids
+        float newRadius = original.getRadius() /2;
+
+        if (newRadius < 3) return;
+
         for (int i = 0; i < 2; i++) {
-            Entity smallerAsteroid = new Entity();
-            smallerAsteroid.setX(e.getX());
-            smallerAsteroid.setY(e.getY());
-            smallerAsteroid.setRadius(e.getRadius() / 2);
+            Entity smallAsteroid = new Asteroid();
+            smallAsteroid.setRadius(newRadius);
+            double angle = Math.random() * 2 * Math.PI;
+            double distance = original.getRadius() + 5; // Garanteret uden for kollisionsafstand
 
-            // Randomize the direction of the smaller asteroids
-            double randomAngle = Math.random() * 360;
-            smallerAsteroid.setRotation(randomAngle);
+            smallAsteroid.setX(original.getX() + Math.cos(angle) * distance);
+            smallAsteroid.setY(original.getY() + Math.sin(angle) * distance);
+            smallAsteroid.setRotation((int) (Math.random() * 360));
+            smallAsteroid.setPolygonCoordinates(
+                    newRadius, -newRadius, -newRadius, -newRadius, -newRadius, newRadius, newRadius, newRadius
+            );
 
-            // Set the polygon coordinates for the smaller asteroid
-            int newSize = (int) smallerAsteroid.getRadius();
-            smallerAsteroid.setPolygonCoordinates(newSize, -newSize, -newSize, -newSize, -newSize, newSize, newSize, newSize);
-
-            // Add the smaller asteroid to the world
-            world.addEntity(smallerAsteroid);
+            world.addEntity(smallAsteroid);
+            System.out.println("[DEBUG] Splitting asteroid with radius: " + smallAsteroid.getRadius());
         }
-
-        // Remove the original asteroid from the world
-        world.removeEntity(e);
     }
 }

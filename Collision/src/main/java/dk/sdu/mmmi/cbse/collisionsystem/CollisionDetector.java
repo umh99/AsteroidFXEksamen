@@ -1,41 +1,55 @@
 package dk.sdu.mmmi.cbse.collisionsystem;
 
+import dk.sdu.mmmi.cbse.common.asteroids.IAsteroidSplitter;
 import dk.sdu.mmmi.cbse.common.services.IPostEntityProcessingService;
 import dk.sdu.mmmi.cbse.common.data.Entity;
 import dk.sdu.mmmi.cbse.common.data.GameData;
 import dk.sdu.mmmi.cbse.common.data.World;
 
+import java.util.ServiceLoader;
+
 public class CollisionDetector implements IPostEntityProcessingService {
 
-    public CollisionDetector() {
-    }
-
     @Override
-    public void process(GameData gameData, World world) {
-        // two for loops for all entities in the world
-        for (Entity entity1 : world.getEntities()) {
-            for (Entity entity2 : world.getEntities()) {
+    public void process(GameData gamedata, World world) {
 
-                // if the two entities are identical, skip the iteration
-                if (entity1.getID().equals(entity2.getID())) {
-                    continue;                    
-                }
+        // Load splitter én gang i stedet for i hvert kald
+        ServiceLoader<IAsteroidSplitter> loader = ServiceLoader.load(IAsteroidSplitter.class);
+        IAsteroidSplitter splitter = loader.findFirst().orElse(null);
 
-                // CollisionDetection
-                if (this.collides(entity1, entity2)) {
-                    world.removeEntity(entity1);
-                    world.removeEntity(entity2);
+        for (Entity e1 : world.getEntities()) {
+            for (Entity e2 : world.getEntities()) {
+
+                if (e1.getId().equals(e2.getId())) continue;
+
+                if (this.collides(e1, e2)) {
+
+                    // Split begge hvis de er asteroider
+                    if (splitter != null) {
+                        if (isAsteroid(e1)) {
+                            splitter.createAsteroids(e1, world);
+                        }
+                        if (isAsteroid(e2)) {
+                            splitter.createAsteroids(e2, world);
+                        }
+                    }
+                    System.out.println("[DEBUG] Removing entity: " + e1.getId());
+                    world.removeEntity(e1);
+                    world.removeEntity(e2);
+                    break; // e1 er nu fjernet, undgå flere sammenligninger
                 }
             }
         }
-
     }
 
-    public Boolean collides(Entity entity1, Entity entity2) {
-        float dx = (float) entity1.getX() - (float) entity2.getX();
-        float dy = (float) entity1.getY() - (float) entity2.getY();
+    public boolean collides(Entity e1, Entity e2) {
+        float dx = (float) e1.getX() - (float) e2.getX();
+        float dy = (float) e1.getY() - (float) e2.getY();
         float distance = (float) Math.sqrt(dx * dx + dy * dy);
-        return distance < (entity1.getRadius() + entity2.getRadius());
+        return distance < (e1.getRadius() + e2.getRadius());
     }
 
+    private boolean isAsteroid(Entity entity) {
+        return entity.getClass().getSimpleName().equals("Asteroid");
+    }
 }
