@@ -20,7 +20,7 @@
         <module>Asteroids</module>
         <module>Collision</module>
         <module>EnemySpaceship</module>
-        <module>ScoringService</module>
+        <module>MicroService</module>
     </modules>
     <properties>
         <java>java</java>

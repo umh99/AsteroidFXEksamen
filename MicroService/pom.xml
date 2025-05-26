@@ -9,7 +9,7 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>dk.sdu.mmmi.cbse</groupId>
-	<artifactId>ScoringService</artifactId>
+	<artifactId>MicroService</artifactId>
 	<version>1.0.1-SNAPSHOT</version>
 	<name>ScoringService</name>
 	<description>RESTful microservice</description>
