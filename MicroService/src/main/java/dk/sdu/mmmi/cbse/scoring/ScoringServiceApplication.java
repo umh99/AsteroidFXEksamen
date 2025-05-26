@@ -16,27 +16,23 @@ public class ScoringServiceApplication {
 		SpringApplication.run(ScoringServiceApplication.class, args);
 	}
 
-	/** Game sends POST /score  with JSON: {"value":100} */
+
 	@PostMapping("/score")
 	public void add(@RequestBody ScoreEvent evt) {
 		score.addAndGet(evt.getValue());
 	}
 
-	/** UI polls GET /score  -> current total */
+
 	@GetMapping("/score")
 	public int current() {
 		return score.get();
 	}
 }
 
-/** Simple DTO for JSON deserialisation */
 class ScoreEvent {
 	private int value;
 
-	public ScoreEvent() {}              // default ctor needed by Jackson
-	public ScoreEvent(int value) { this.value = value; }
-
 	public int getValue() { return value; }
-	public void setValue(int value) { this.value = value; }
+
 
 }

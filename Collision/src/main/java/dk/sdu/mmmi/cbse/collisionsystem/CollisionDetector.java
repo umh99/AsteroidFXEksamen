@@ -23,9 +23,7 @@ import java.util.ServiceLoader;
  */
 public class CollisionDetector implements IPostEntityProcessingService {
 
-    // ------------------------------------------------------------------
-    // ---  Micro-service call helpers  ---------------------------------
-    // ------------------------------------------------------------------
+
     private static final String SCORE_URL = "http://localhost:8080/score";
     private final HttpClient http = HttpClient.newHttpClient();
 
@@ -41,7 +39,7 @@ public class CollisionDetector implements IPostEntityProcessingService {
             try (OutputStream os = con.getOutputStream()) {
                 os.write(json.getBytes(StandardCharsets.UTF_8));
             }
-            con.getInputStream().close();   // fire-and-forget
+            con.getInputStream().close();
             con.disconnect();
         } catch (Exception ignored) { }
     }
@@ -50,7 +48,6 @@ public class CollisionDetector implements IPostEntityProcessingService {
     @Override
     public void process(GameData gameData, World world) {
 
-        // Optional: asteroid splitter (if provided by Asteroid module)
         IAsteroidSplitter splitter = ServiceLoader.load(IAsteroidSplitter.class)
                 .findFirst()
                 .orElse(null);
