@@ -17,6 +17,17 @@ import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URL;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
+
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -30,6 +41,9 @@ public class Main extends Application {
     private Iterable<IGamePluginService> gamePluginServices;
     private Iterable<IEntityProcessingService> entityProcessingServices;
     private Iterable<IPostEntityProcessingService> postEntityProcessingServices;
+    private final Text scoreText = new Text(10, 20, "Score: 0");
+    private final HttpClient http   = HttpClient.newHttpClient();
+    private static final String SCORE_ENDPOINT = "http://localhost:8080/score";
 
     public static void main(String[] args) {
         launch(Main.class);
@@ -40,6 +54,7 @@ public class Main extends Application {
         // Initialize Spring application context
         AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(SpringConfig.class);
 
+
         // Retrieve beans from SpringConfig
         gamePluginServices = context.getBean("gamePluginServices", Iterable.class);
         entityProcessingServices = context.getBean("entityProcessingServices", Iterable.class);
@@ -47,7 +62,7 @@ public class Main extends Application {
 
         Text text = new Text(10, 20, "Destroyed asteroids: 0");
         gameWindow.setPrefSize(gameData.getDisplayWidth(), gameData.getDisplayHeight());
-        gameWindow.getChildren().add(text);
+        gameWindow.getChildren().add(scoreText);
 
         Scene scene = new Scene(gameWindow);
         scene.setOnKeyPressed(event -> {
@@ -96,13 +111,33 @@ public class Main extends Application {
 
     private void render() {
         new AnimationTimer() {
-            @Override
-            public void handle(long now) {
+            private long lastPoll = 0;
+            @Override public void handle(long now) {
                 update();
                 draw();
                 gameData.getKeys().update();
+
+                /* poll micro-service every 0.5 s */
+                if (now - lastPoll > 500_000_000) {    // 0.5 s in ns
+                    lastPoll = now;
+                    pollScore();
+                }
             }
         }.start();
+    }
+    private void pollScore() {
+        try {
+            URL url = new URL(SCORE_ENDPOINT);
+            HttpURLConnection con = (HttpURLConnection) url.openConnection();
+            con.setRequestMethod("GET");
+
+            try (BufferedReader br = new BufferedReader(
+                    new InputStreamReader(con.getInputStream(), StandardCharsets.UTF_8))) {
+                String body = br.readLine();          // micro-service returns plain number
+                scoreText.setText("Score: " + body);
+            }
+            con.disconnect();
+        } catch (Exception ignored) { /* micro-service may be offline */ }
     }
 
     private void update() {
