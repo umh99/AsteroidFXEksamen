@@ -15,46 +15,47 @@ public class AsteroidPlugin implements IGamePluginService {
 
     private ScheduledExecutorService scheduler;
 
-    @Override
-    public void start(GameData gameData, World world) {
-        // Initialize and start the scheduler
-        scheduler = Executors.newSingleThreadScheduledExecutor();
-        scheduler.scheduleAtFixedRate(() -> {
-            Entity asteroid = createAsteroid(gameData);
-            world.addEntity(asteroid);
-            System.out.println("Asteroid spawned at: " + asteroid.getX() + ", " + asteroid.getY());
-        }, 0, 5, TimeUnit.SECONDS); // Spawn every 5 seconds
+
+
+    private Entity createAsteroid(GameData gamedata) {
+        Entity asteroid = new Asteroid();
+        Random rand = new Random();
+        int size = 6;
+        asteroid.setPolygonCoordinates(size, -size, -size, -size, -size, size, size, size);
+        asteroid.setX(rand.nextInt(gamedata.getDisplayWidth()));
+        asteroid.setY(rand.nextInt(gamedata.getDisplayHeight()));
+        asteroid.setRadius(size);
+        asteroid.setRotation(rand.nextInt(90));
+        return asteroid;
     }
 
     @Override
+    public void start(GameData gameData, World world) {
+            scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r);
+                t.setDaemon(true); // allows JVM to exit when only daemon threads are running
+                t.setName("Asteroid-Spawner");
+                return t;
+            });
+
+            scheduler.scheduleAtFixedRate(() -> {
+                Entity asteroid = createAsteroid(gameData);
+                world.addEntity(asteroid);
+            }, 0, 3, TimeUnit.SECONDS);
+        }
+
+    @Override
     public void stop(GameData gameData, World world) {
-        // Stop the scheduler
         if (scheduler != null && !scheduler.isShutdown()) {
             scheduler.shutdownNow();
         }
 
-        // Remove all asteroids from the world
         for (Entity asteroid : world.getEntities(Asteroid.class)) {
             world.removeEntity(asteroid);
         }
+
     }
 
-    private Entity createAsteroid(GameData gameData) {
-        Entity asteroid = new Asteroid();
-        Random rnd = new Random();
-
-        // Randomize size
-        int size = rnd.nextInt(10) + 5;
-        asteroid.setPolygonCoordinates(size, -size, -size, -size, -size, size, size, size);
-
-        // Randomize position within game boundaries
-        asteroid.setX(rnd.nextInt(gameData.getDisplayWidth()));
-        asteroid.setY(rnd.nextInt(gameData.getDisplayHeight()));
-
-        // Set radius and random rotation
-        asteroid.setRadius(size);
-        asteroid.setRotation(rnd.nextInt(360));
-
-        return asteroid;
-    }
 }
+
+
