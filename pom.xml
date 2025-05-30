@@ -3,7 +3,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>dk.sdu.mmmi.cbse</groupId>
-    <artifactId>asteroids.jpms</artifactId>
+    <artifactId>AsteroidFXEksamen</artifactId>
     <version>1.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>AsteroidsFX</name>
@@ -20,6 +20,7 @@
         <module>Asteroids</module>
         <module>Collision</module>
         <module>EnemySpaceship</module>
+        <module>MicroService</module>
     </modules>
     <properties>
         <java>java</java>

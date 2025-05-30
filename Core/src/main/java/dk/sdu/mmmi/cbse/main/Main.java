@@ -15,7 +15,19 @@ import javafx.scene.layout.Pane;
 import javafx.scene.shape.Polygon;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URL;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
+
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -26,15 +38,31 @@ public class Main extends Application {
     private final Map<Entity, Polygon> polygons = new ConcurrentHashMap<>();
     private final Pane gameWindow = new Pane();
 
+    private Iterable<IGamePluginService> gamePluginServices;
+    private Iterable<IEntityProcessingService> entityProcessingServices;
+    private Iterable<IPostEntityProcessingService> postEntityProcessingServices;
+    private final Text scoreText = new Text(10, 20, "Score: 0");
+    private final HttpClient http   = HttpClient.newHttpClient();
+    private static final String SCORE_ENDPOINT = "http://localhost:8080/score";
+
     public static void main(String[] args) {
         launch(Main.class);
     }
 
     @Override
     public void start(Stage window) throws Exception {
+        // Initialize Spring application context
+        AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(SpringConfig.class);
+
+
+        // Retrieve beans from SpringConfig
+        gamePluginServices = context.getBean("gamePluginServices", Iterable.class);
+        entityProcessingServices = context.getBean("entityProcessingServices", Iterable.class);
+        postEntityProcessingServices = context.getBean("postEntityProcessingServices", Iterable.class);
+
         Text text = new Text(10, 20, "Destroyed asteroids: 0");
         gameWindow.setPrefSize(gameData.getDisplayWidth(), gameData.getDisplayHeight());
-        gameWindow.getChildren().add(text);
+        gameWindow.getChildren().add(scoreText);
 
         Scene scene = new Scene(gameWindow);
         scene.setOnKeyPressed(event -> {
@@ -66,8 +94,8 @@ public class Main extends Application {
             }
         });
 
-        // Lookup all Game Plugins using ServiceLoaderHelper
-        for (IGamePluginService iGamePlugin : ServiceLoaderHelper.loadGamePluginServices()) {
+        // Use Spring beans instead of ServiceLoaderHelper
+        for (IGamePluginService iGamePlugin : gamePluginServices) {
             iGamePlugin.start(gameData, world);
         }
         for (Entity entity : world.getEntities()) {
@@ -83,20 +111,40 @@ public class Main extends Application {
 
     private void render() {
         new AnimationTimer() {
-            @Override
-            public void handle(long now) {
+            private long lastPoll = 0;
+            @Override public void handle(long now) {
                 update();
                 draw();
                 gameData.getKeys().update();
+
+                /* poll micro-service every 0.5 s */
+                if (now - lastPoll > 500_000_000) {    // 0.5 s in ns
+                    lastPoll = now;
+                    pollScore();
+                }
             }
         }.start();
     }
+    private void pollScore() {
+        try {
+            URL url = new URL(SCORE_ENDPOINT);
+            HttpURLConnection con = (HttpURLConnection) url.openConnection();
+            con.setRequestMethod("GET");
+
+            try (BufferedReader br = new BufferedReader(
+                    new InputStreamReader(con.getInputStream(), StandardCharsets.UTF_8))) {
+                String body = br.readLine();          // micro-service returns plain number
+                scoreText.setText("Score: " + body);
+            }
+            con.disconnect();
+        } catch (Exception ignored) { /* micro-service may be offline */ }
+    }
 
     private void update() {
-        for (IEntityProcessingService entityProcessorService : ServiceLoaderHelper.loadEntityProcessingServices()) {
+        for (IEntityProcessingService entityProcessorService : entityProcessingServices) {
             entityProcessorService.process(gameData, world);
         }
-        for (IPostEntityProcessingService postEntityProcessorService : ServiceLoaderHelper.loadPostEntityProcessingServices()) {
+        for (IPostEntityProcessingService postEntityProcessorService : postEntityProcessingServices) {
             postEntityProcessorService.process(gameData, world);
         }
     }
